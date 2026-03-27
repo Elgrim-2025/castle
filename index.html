@@ -73,7 +73,7 @@
   <button id="startBtn">시작하기</button>
 </div>
 
-<div id="hint">📱 바닥을 향해 카메라를 비춰주세요...</div>
+<div id="hint">바닥을 향해 카메라를 비춰주세요...</div>
 
 <!-- 카메라 영상 배경 -->
 <video id="video-bg" autoplay playsinline muted></video>
@@ -115,7 +115,7 @@ videoTex.magFilter = THREE.LinearFilter;
 videoTex.format    = THREE.RGBAFormat;
 
 // 크기 8 (단위: AR 미터)
-const GEO_SIZE = 8;
+const GEO_SIZE = 2;
 const geo  = new THREE.PlaneGeometry(GEO_SIZE, GEO_SIZE * (9/16));
 const mat  = new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide });
 const mesh = new THREE.Mesh(geo, mat);
