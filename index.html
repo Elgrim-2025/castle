@@ -114,12 +114,11 @@ videoTex.minFilter = THREE.LinearFilter;
 videoTex.magFilter = THREE.LinearFilter;
 videoTex.format    = THREE.RGBAFormat;
 
-// 크기 8 (단위: AR 미터)
-const GEO_SIZE = 1;
+// 크기 2 (단위: AR 미터)
+const GEO_SIZE = 2;
 const geo  = new THREE.PlaneGeometry(GEO_SIZE, GEO_SIZE * (9/16));
 const mat  = new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide });
 const mesh = new THREE.Mesh(geo, mat);
-mesh.rotation.x = -Math.PI / 2;   // 바닥에 눕힘
 mesh.visible = false;
 scene.add(mesh);
 
@@ -136,6 +135,11 @@ let xrSession   = null;
 let hitTestSrc  = null;
 let localFloor  = null;
 let placed      = false;
+
+// hit-test 포즈 행렬 저장 (위치+방향 모두 포함)
+const hitMatrix  = new THREE.Matrix4();
+// PlaneGeometry 기본 법선은 +Z → 바닥(+Y 법선) 위에 눕히려면 -90° X 회전 추가
+const flatOffset = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
 
 // WebXR 지원 확인
 const xrSupported = navigator.xr
@@ -186,7 +190,7 @@ async function startAR() {
   const viewerSpace = await xrSession.requestReferenceSpace('viewer');
   hitTestSrc  = await xrSession.requestHitTestSource({ space: viewerSpace });
 
-  hint.textContent = '📱 바닥을 향해 카메라를 비추고 탭하세요';
+  hint.textContent = '바닥을 향해 카메라를 비추고 탭하세요';
   hint.style.display = 'block';
   ring.visible = true;
 
@@ -194,27 +198,27 @@ async function startAR() {
   xrSession.addEventListener('select', () => {
     if (ring.visible) {
       placed = false;
-      placeVideo(ring.position.clone());
+      placeVideoAR();
     }
   });
 
   renderer.setAnimationLoop((time, frame) => {
     if (!frame) return;
 
-    // Hit-test 결과로 링 위치 업데이트
+    // Hit-test 결과로 링·행렬 업데이트
     const hits = frame.getHitTestResults(hitTestSrc);
     if (hits.length > 0) {
       const pose = hits[0].getPose(localFloor);
       if (pose) {
         ring.visible = true;
-        ring.position.set(
-          pose.transform.position.x,
-          pose.transform.position.y,
-          pose.transform.position.z
-        );
+        // 위치만 링에 적용
+        const p = pose.transform.position;
+        ring.position.set(p.x, p.y, p.z);
+        // 전체 포즈 행렬 저장 (배치 시 사용)
+        hitMatrix.fromArray(pose.transform.matrix);
       }
     } else {
-      ring.visible = placed ? false : true;
+      ring.visible = !placed;
     }
 
     ring.rotation.z += 0.01;
@@ -222,16 +226,32 @@ async function startAR() {
   });
 }
 
-// ─── 배치 공통 함수 ───────────────────────────────────────
+// ─── AR 배치: hit-test 행렬(위치+방향) 그대로 적용 ────────────
+function placeVideoAR() {
+  placed = true;
+  ring.visible = false;
+  // hit pose 행렬에 바닥 눕힘 회전을 곱해서 수평 보장
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.copy(hitMatrix).multiply(flatOffset);
+  mesh.visible = true;
+  showPlaced();
+}
+
+// ─── 폴백 배치: 고정 위치 ─────────────────────────────────
 function placeVideo(pos) {
   placed = true;
   ring.visible = false;
-  // 바닥 히트 위치 그대로 사용 (y 오프셋 없음)
+  mesh.matrixAutoUpdate = true;
   mesh.position.set(pos.x, pos.y, pos.z);
+  mesh.rotation.set(-Math.PI / 2, 0, 0);
   mesh.visible = true;
-  hint.textContent = '✅ 무한성의 입구가 열렸습니다!';
-  setTimeout(() => { hint.style.display = 'none'; }, 3000);
+  showPlaced();
+}
 
+function showPlaced() {
+  hint.textContent = ' 무한성의 입구가 열렸습니다!';
+  hint.style.display = 'block';
+  setTimeout(() => { hint.style.display = 'none'; }, 3000);
   arVideo.muted = false;
   arVideo.play().catch(() => { arVideo.muted = true; arVideo.play(); });
 }
