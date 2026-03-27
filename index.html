@@ -115,7 +115,7 @@ videoTex.magFilter = THREE.LinearFilter;
 videoTex.format    = THREE.RGBAFormat;
 
 // 크기 2 (단위: AR 미터)
-const GEO_SIZE = 2;
+const GEO_SIZE = 1;
 const geo  = new THREE.PlaneGeometry(GEO_SIZE, GEO_SIZE);
 const mat  = new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide });
 const mesh = new THREE.Mesh(geo, mat);
