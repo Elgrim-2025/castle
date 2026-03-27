@@ -115,7 +115,7 @@ videoTex.magFilter = THREE.LinearFilter;
 videoTex.format    = THREE.RGBAFormat;
 
 // 크기 8 (단위: AR 미터)
-const GEO_SIZE = 2;
+const GEO_SIZE = 1;
 const geo  = new THREE.PlaneGeometry(GEO_SIZE, GEO_SIZE * (9/16));
 const mat  = new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide });
 const mesh = new THREE.Mesh(geo, mat);
@@ -158,9 +158,9 @@ async function startFallback() {
   hint.textContent = '📱 화면을 탭하면 영상이 바닥에 배치됩니다';
   hint.style.display = 'block';
 
-  // 탭하면 메시를 카메라 앞 3m 바닥에 배치
+  // 탭하면 메시를 카메라 앞 3m 바닥에 배치 (재탭 시 재배치)
   canvas.addEventListener('click', () => {
-    if (placed) return;
+    placed = false;
     placeVideo(new THREE.Vector3(0, -1.5, -3));
   });
 
@@ -190,9 +190,10 @@ async function startAR() {
   hint.style.display = 'block';
   ring.visible = true;
 
-  // 탭하면 배치
+  // 탭하면 배치 (재탭 시 기존 위치 초기화 후 재배치)
   xrSession.addEventListener('select', () => {
-    if (!placed && ring.visible) {
+    if (ring.visible) {
+      placed = false;
       placeVideo(ring.position.clone());
     }
   });
@@ -225,7 +226,8 @@ async function startAR() {
 function placeVideo(pos) {
   placed = true;
   ring.visible = false;
-  mesh.position.copy(pos);
+  // 바닥 히트 위치 그대로 사용 (y 오프셋 없음)
+  mesh.position.set(pos.x, pos.y, pos.z);
   mesh.visible = true;
   hint.textContent = '✅ 무한성의 입구가 열렸습니다!';
   setTimeout(() => { hint.style.display = 'none'; }, 3000);
